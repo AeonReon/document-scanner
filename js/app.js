@@ -26,7 +26,7 @@ window.DS = window.DS || {};
   // }
 
   // ---------- view routing ----------
-  const VIEWS = ['home', 'review', 'crop', 'filter', 'export', 'library'];
+  const VIEWS = ['home', 'review', 'crop', 'filter', 'annotate', 'export', 'library'];
 
   function setView(name) {
     state.view = name;
@@ -42,6 +42,7 @@ window.DS = window.DS || {};
       review: state.doc ? (state.doc.name || 'Untitled') : 'Review',
       crop: 'Crop & Align',
       filter: 'Filter',
+      annotate: 'Annotate',
       export: 'Export',
       library: 'My Scans',
     }[name] || 'Scanner';
@@ -57,7 +58,7 @@ window.DS = window.DS || {};
       }
       return;
     }
-    if (state.view === 'crop' || state.view === 'filter' || state.view === 'export') {
+    if (state.view === 'crop' || state.view === 'filter' || state.view === 'annotate' || state.view === 'export') {
       setView('review');
       renderReview();
       return;
@@ -116,6 +117,7 @@ window.DS = window.DS || {};
       sourceCanvas: displayCanvas,
       corners,
       filter: 'colour',
+      annotations: { strokes: [], texts: [] },
       processed: null,
     };
     page.processed = await processPage(page);
@@ -133,18 +135,21 @@ window.DS = window.DS || {};
     await renderLibraryGrid($('#library-grid'), 8);
   }
 
-  async function renderLibraryGrid(container, limit) {
+  async function renderLibraryGrid(container, limit, query = '') {
     const items = await DB.listAll();
     $('#scan-count').textContent = `${items.length}`;
-    if (!items.length) {
-      container.innerHTML = `
-        <div class="empty-hint">
-          <p>No scans yet. Tap <strong>Take a Photo</strong> to start.</p>
-          <p class="small muted">Every scan is saved here, private to this device. Nothing is uploaded.</p>
-        </div>`;
+    const q = (query || '').trim().toLowerCase();
+    const filtered = q ? items.filter(r => (r.name || '').toLowerCase().includes(q)) : items;
+    if (!filtered.length) {
+      container.innerHTML = q
+        ? `<div class="empty-hint"><p>No matches for <strong>${escapeHtml(query)}</strong>.</p></div>`
+        : `<div class="empty-hint">
+            <p>No scans yet. Tap <strong>Take a Photo</strong> to start.</p>
+            <p class="small muted">Every scan is saved here, private to this device. Nothing is uploaded.</p>
+          </div>`;
       return;
     }
-    const list = limit ? items.slice(0, limit) : items;
+    const list = limit ? filtered.slice(0, limit) : filtered;
     container.innerHTML = '';
     for (const rec of list) {
       const card = document.createElement('div');
@@ -152,12 +157,26 @@ window.DS = window.DS || {};
       card.dataset.id = rec.id;
       const thumbUrl = rec.thumbBlob ? URL.createObjectURL(rec.thumbBlob) : '';
       card.innerHTML = `
+        <button class="del-btn" aria-label="Delete">×</button>
         <img alt="" src="${thumbUrl}" />
         <div class="meta">
           <div class="name">${escapeHtml(rec.name || 'Untitled')}</div>
           <div class="sub">${rec.pages?.length || 0} page${(rec.pages?.length || 0) === 1 ? '' : 's'} · ${formatDate(rec.updatedAt)}</div>
         </div>`;
-      card.addEventListener('click', () => openLibraryItem(rec.id));
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('del-btn')) return;
+        openLibraryItem(rec.id);
+      });
+      card.querySelector('.del-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete "${rec.name || 'Untitled'}"? This cannot be undone.`)) return;
+        await DB.remove(rec.id);
+        toast('Deleted');
+        const search = $('#library-search')?.value || '';
+        await renderLibraryGrid(container, limit, search);
+        const cnt = await DB.count();
+        if ($('#library-count')) $('#library-count').textContent = `${cnt} scan${cnt === 1 ? '' : 's'}`;
+      });
       container.appendChild(card);
     }
   }
@@ -184,6 +203,7 @@ window.DS = window.DS || {};
         sourceCanvas: displayCanvas,
         corners: sp.corners || I.fullImageCorners(),
         filter: sp.filter || 'colour',
+        annotations: sp.annotations || { strokes: [], texts: [] },
         processed,
       });
     }
@@ -406,21 +426,23 @@ window.DS = window.DS || {};
     const name = ($('#export-name').value || 'Scan').trim();
     state.doc.name = name;
     const paper = $('#export-paper').value;
+    const password = ($('#export-password').value || '').trim();
     const pages = [];
     for (const p of state.doc.pages) {
-      const canvas = p.processed || I.dewarp(p.sourceFullCanvas, p.corners);
-      const jpeg = await P.canvasToJpegBytes(canvas, 0.86);
-      pages.push({ jpeg, widthPx: canvas.width, heightPx: canvas.height });
+      const baseCanvas = p.processed || I.dewarp(p.sourceFullCanvas, p.corners);
+      const baked = DS.annotate.bake(p, baseCanvas);
+      const jpeg = await P.canvasToJpegBytes(baked, 0.86);
+      pages.push({ jpeg, widthPx: baked.width, heightPx: baked.height });
     }
-    const blob = await P.buildPdf(pages, { paper, title: name });
+    const blob = await P.buildPdf(pages, { paper, title: name, password });
     await saveDocToLibrary();
-    const filename = safeFilename(name) + '.pdf';
+    const filename = safeFilename(name) + (password ? '-locked' : '') + '.pdf';
     if (share) {
       await shareBlob(blob, filename, name);
     } else {
       downloadBlob(blob, filename);
     }
-    toast(share ? 'Shared' : 'PDF saved');
+    toast(share ? 'Shared' : (password ? 'PDF saved (locked)' : 'PDF saved'));
   }
 
   async function exportJpgs({ share = false } = {}) {
@@ -429,8 +451,9 @@ window.DS = window.DS || {};
     state.doc.name = name;
     if (state.doc.pages.length === 1) {
       const p = state.doc.pages[0];
-      const canvas = p.processed || I.dewarp(p.sourceFullCanvas, p.corners);
-      const blob = await canvasToBlob(canvas, 'image/jpeg', 0.9);
+      const baseCanvas = p.processed || I.dewarp(p.sourceFullCanvas, p.corners);
+      const baked = DS.annotate.bake(p, baseCanvas);
+      const blob = await canvasToBlob(baked, 'image/jpeg', 0.9);
       await saveDocToLibrary();
       const fn = safeFilename(name) + '.jpg';
       if (share) await shareBlob(blob, fn, name);
@@ -438,11 +461,11 @@ window.DS = window.DS || {};
       toast(share ? 'Shared' : 'Saved');
       return;
     }
-    // Multi-page → multi-file (browser will save each).
     for (let i = 0; i < state.doc.pages.length; i++) {
       const p = state.doc.pages[i];
-      const canvas = p.processed || I.dewarp(p.sourceFullCanvas, p.corners);
-      const blob = await canvasToBlob(canvas, 'image/jpeg', 0.9);
+      const baseCanvas = p.processed || I.dewarp(p.sourceFullCanvas, p.corners);
+      const baked = DS.annotate.bake(p, baseCanvas);
+      const blob = await canvasToBlob(baked, 'image/jpeg', 0.9);
       downloadBlob(blob, `${safeFilename(name)}-${String(i + 1).padStart(2, '0')}.jpg`);
     }
     await saveDocToLibrary();
@@ -471,6 +494,7 @@ window.DS = window.DS || {};
         processedBlob: procBlob,
         corners: p.corners,
         filter: p.filter,
+        annotations: p.annotations || { strokes: [], texts: [] },
       });
     }
     // Thumb from first processed page.
@@ -505,7 +529,8 @@ window.DS = window.DS || {};
     $('#back-btn').addEventListener('click', back);
     $('#library-btn').addEventListener('click', async () => {
       setView('library');
-      await renderLibraryGrid($('#library-grid-full'));
+      $('#library-search').value = '';
+      await renderLibraryGrid($('#library-grid-full'), 0, '');
       const items = await DB.count();
       $('#library-count').textContent = `${items} scan${items === 1 ? '' : 's'}`;
     });
@@ -521,8 +546,17 @@ window.DS = window.DS || {};
 
     $('#act-crop').addEventListener('click', openCrop);
     $('#act-filter').addEventListener('click', openFilter);
+    $('#act-annotate').addEventListener('click', () => {
+      const p = currentPage();
+      if (p) DS.annotate.open(p);
+    });
     $('#act-rotate').addEventListener('click', rotateCurrent);
     $('#act-delete').addEventListener('click', deleteCurrent);
+    if (DS.annotate && DS.annotate.bind) DS.annotate.bind();
+
+    $('#library-search').addEventListener('input', async (e) => {
+      await renderLibraryGrid($('#library-grid-full'), 0, e.target.value);
+    });
 
     $('#btn-auto-detect').addEventListener('click', autoDetectAgain);
     $('#btn-full-page').addEventListener('click', useFullPage);
@@ -616,6 +650,12 @@ window.DS = window.DS || {};
     setTimeout(checkStamp, 1500);
     setInterval(checkStamp, 60000);
   }
+
+  DS.app = {
+    setView,
+    renderReview,
+    currentView: () => state.view,
+  };
 
   document.addEventListener('DOMContentLoaded', boot);
 })();

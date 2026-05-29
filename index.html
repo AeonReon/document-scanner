@@ -12,7 +12,7 @@
 <link rel="manifest" href="/manifest.json" />
 <link rel="icon" href="/images/favicon-32.png?v=1" sizes="32x32" />
 <link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=1" />
-<link rel="stylesheet" href="/styles.css?v=1" />
+<link rel="stylesheet" href="/styles.css?v=2" />
 </head>
 <body>
 
@@ -83,6 +83,9 @@
       <button class="action-tile" id="act-filter">
         <span class="emoji" aria-hidden="true">🎨</span><span>Filter</span>
       </button>
+      <button class="action-tile" id="act-annotate">
+        <span class="emoji" aria-hidden="true">✏️</span><span>Annotate</span>
+      </button>
       <button class="action-tile" id="act-rotate">
         <span class="emoji" aria-hidden="true">↻</span><span>Rotate</span>
       </button>
@@ -145,6 +148,46 @@
     </div>
   </section>
 
+  <!-- ANNOTATE -->
+  <section class="view" id="view-annotate" data-view="annotate" hidden>
+    <div class="crop-stage" id="annotate-stage">
+      <canvas id="annotate-canvas"></canvas>
+      <svg id="annotate-overlay" aria-hidden="true"></svg>
+    </div>
+
+    <div class="annotate-tools" id="annotate-tools" role="toolbar" aria-label="Tools">
+      <button class="tool" data-tool="pen"   aria-pressed="true" aria-label="Pen">
+        <span class="emoji" aria-hidden="true">✏️</span><span>Pen</span>
+      </button>
+      <button class="tool" data-tool="text"  aria-pressed="false" aria-label="Text">
+        <span class="emoji" aria-hidden="true">T</span><span>Text</span>
+      </button>
+      <button class="tool" data-tool="erase" aria-pressed="false" aria-label="Erase">
+        <span class="emoji" aria-hidden="true">🧽</span><span>Erase</span>
+      </button>
+    </div>
+
+    <div class="annotate-colors" id="annotate-colors" role="radiogroup" aria-label="Colour">
+      <button class="swatch-btn" data-color="ink"    aria-pressed="true"  aria-label="Ink">
+        <span class="dot" style="background:#1c1924"></span>
+      </button>
+      <button class="swatch-btn" data-color="blue"   aria-pressed="false" aria-label="Blue">
+        <span class="dot" style="background:#3b82f6"></span>
+      </button>
+      <button class="swatch-btn" data-color="red"    aria-pressed="false" aria-label="Red">
+        <span class="dot" style="background:#e36363"></span>
+      </button>
+      <button class="swatch-btn" data-color="yellow" aria-pressed="false" aria-label="Highlight">
+        <span class="dot" style="background:rgba(255, 220, 80, 0.85)"></span>
+      </button>
+    </div>
+
+    <div class="cta-stack">
+      <button class="btn btn-ghost"   id="btn-annotate-clear">Clear All</button>
+      <button class="btn btn-primary" id="btn-annotate-done">Done</button>
+    </div>
+  </section>
+
   <!-- EXPORT -->
   <section class="view" id="view-export" data-view="export" hidden>
     <div class="export-card">
@@ -164,6 +207,12 @@
           <option value="receipt">Receipt (80mm)</option>
           <option value="id">ID card</option>
         </select>
+      </label>
+
+      <label class="field">
+        <span class="label">Password <span class="muted small">(optional)</span></span>
+        <input type="password" id="export-password" placeholder="Leave blank for no password" autocomplete="off" />
+        <span class="field-hint muted small">Locks the PDF. The recipient needs this to open it.</span>
       </label>
 
       <div class="page-count muted small" id="export-summary">1 page</div>
@@ -186,6 +235,7 @@
   <!-- LIBRARY -->
   <section class="view" id="view-library" data-view="library" hidden>
     <div class="library-toolbar">
+      <input type="search" id="library-search" placeholder="Search scans…" autocomplete="off" />
       <span class="muted small" id="library-count">0 scans</span>
     </div>
     <div class="library-grid" id="library-grid-full"></div>
@@ -199,11 +249,12 @@
 <!-- VERSION PILL -->
 <div class="version-pill" id="version-pill">v1</div>
 
-<script src="/js/util.js?v=1"></script>
-<script src="/js/imaging.js?v=1"></script>
-<script src="/js/pdf.js?v=1"></script>
-<script src="/js/db.js?v=1"></script>
-<script src="/js/app.js?v=1"></script>
+<script src="/js/util.js?v=2"></script>
+<script src="/js/imaging.js?v=2"></script>
+<script src="/js/pdf.js?v=2"></script>
+<script src="/js/db.js?v=2"></script>
+<script src="/js/annotate.js?v=2"></script>
+<script src="/js/app.js?v=2"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));

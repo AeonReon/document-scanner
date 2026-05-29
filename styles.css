@@ -282,8 +282,8 @@ body {
 /* ---- action row ---- */
 .action-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
   margin-bottom: 16px;
 }
 .action-tile {
@@ -292,10 +292,10 @@ body {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   background: var(--surface);
   border: 0;
-  border-radius: 14px;
-  padding: 12px 4px;
+  border-radius: 12px;
+  padding: 10px 3px;
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink);
   cursor: pointer;
   isolation: isolate;
@@ -431,12 +431,91 @@ body {
 .field input:focus, .field select:focus { outline: none; border-color: var(--accent-a); }
 .page-count { text-align: center; }
 
+/* ---- annotate ---- */
+#annotate-overlay { position: absolute; pointer-events: auto; touch-action: none; user-select: none; }
+#annotate-overlay polyline, #annotate-overlay text { pointer-events: stroke; }
+#annotate-overlay text { pointer-events: bounding-box; }
+.annotate-tools, .annotate-colors {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.annotate-tools { grid-template-columns: repeat(3, 1fr); }
+.annotate-colors { grid-template-columns: repeat(4, 1fr); }
+.tool, .swatch-btn {
+  position: relative;
+  appearance: none;
+  background: var(--surface);
+  border: 0;
+  border-radius: 12px;
+  padding: 10px;
+  font: inherit;
+  font-size: 13px; font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  isolation: isolate;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: transform .18s var(--spring);
+}
+.tool::before, .swatch-btn::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--accent-b), var(--accent-c));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.tool[aria-pressed="true"], .swatch-btn[aria-pressed="true"] {
+  background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  color: #fff;
+}
+.tool[aria-pressed="true"]::before, .swatch-btn[aria-pressed="true"]::before {
+  background: linear-gradient(135deg, #fff, rgba(255,255,255,0.3));
+}
+.tool .emoji { font-size: 18px; }
+.swatch-btn .dot {
+  width: 22px; height: 22px; border-radius: 999px;
+  box-shadow: inset 0 0 0 1.5px rgba(60,47,74,0.18);
+}
+
 /* ---- library page ---- */
 .library-toolbar {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
   padding: 0 4px;
 }
+#library-search {
+  flex: 1 1 auto;
+  appearance: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  font: inherit; font-size: 15px;
+  color: var(--ink);
+}
+#library-search:focus { outline: none; border-color: var(--accent-a); }
+
+.library-card .del-btn {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255,255,255,0.92);
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.field-hint { display: block; margin-top: 4px; }
 
 /* ---- toast ---- */
 .toast {

@@ -1,22 +1,22 @@
 // Document Scanner service worker.
-// Strategy: network-first for HTML (so deploys land), stale-while-revalidate
-// for everything else. Pre-cache the app shell so it works fully offline.
-const VERSION = 'docscan-v1';
+// Network-first for HTML so deploys land. SWR for static assets.
+const VERSION = 'docscan-v2';
 const PRECACHE = [
   '/',
   '/index.html',
-  '/styles.css?v=1',
+  '/styles.css?v=2',
   '/manifest.json',
   '/images/favicon-32.png?v=1',
   '/images/apple-touch-icon.png?v=1',
   '/images/icon-192.png?v=1',
   '/images/icon-512.png?v=1',
   '/images/icon-maskable.png?v=1',
-  '/js/util.js?v=1',
-  '/js/imaging.js?v=1',
-  '/js/pdf.js?v=1',
-  '/js/db.js?v=1',
-  '/js/app.js?v=1',
+  '/js/util.js?v=2',
+  '/js/imaging.js?v=2',
+  '/js/pdf.js?v=2',
+  '/js/db.js?v=2',
+  '/js/annotate.js?v=2',
+  '/js/app.js?v=2',
 ];
 
 self.addEventListener('install', (e) => {
@@ -39,7 +39,6 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Always bypass cache for the build-stamp probe.
   if (url.pathname === '/build-stamp.json') {
     e.respondWith(fetch(req, { cache: 'no-store' }).catch(() => new Response('{"stamp":0}', { headers: { 'Content-Type': 'application/json' } })));
     return;
@@ -48,7 +47,6 @@ self.addEventListener('fetch', (e) => {
   const isHTML = req.mode === 'navigate' ||
                  (req.headers.get('accept') || '').includes('text/html');
   if (isHTML) {
-    // Network first for HTML.
     e.respondWith(
       fetch(req).then(r => {
         const copy = r.clone();
@@ -59,7 +57,6 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-first with revalidation for static assets.
   e.respondWith(
     caches.match(req).then(hit => {
       const fetchPromise = fetch(req).then(r => {
