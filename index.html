@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#fff4e6" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Scanner" />
+<title>Private Document Scanner</title>
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/images/favicon-32.png?v=1" sizes="32x32" />
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=1" />
+<link rel="stylesheet" href="/styles.css?v=1" />
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <button class="iconbtn" id="back-btn" aria-label="Back" hidden>‹</button>
+  <h1 id="page-title">Scanner</h1>
+  <button class="iconbtn" id="library-btn" aria-label="Library">☰</button>
+</header>
+
+<main id="main">
+
+  <!-- HOME -->
+  <section class="view" id="view-home" data-view="home">
+    <div class="hero">
+      <div class="hero-card">
+        <div class="hero-icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="64" height="64">
+            <defs>
+              <linearGradient id="hg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ff7a59"/>
+                <stop offset="100%" stop-color="#ffad60"/>
+              </linearGradient>
+            </defs>
+            <rect x="10" y="8" width="36" height="48" rx="6" fill="#fff" stroke="url(#hg)" stroke-width="2"/>
+            <path d="M16 22h24M16 30h24M16 38h16" stroke="#3b2f4a" stroke-width="2.4" stroke-linecap="round"/>
+            <rect x="13" y="45" width="30" height="3" rx="1.5" fill="#5cc8aa"/>
+          </svg>
+        </div>
+        <h2>Scan anything. Stays on your phone.</h2>
+        <p class="muted">Photos &rarr; clean PDF. Nothing leaves the device. Ever.</p>
+        <div class="cta-stack">
+          <button class="btn btn-primary" id="btn-camera">
+            <span class="btn-emoji" aria-hidden="true">📷</span> Take a Photo
+          </button>
+          <button class="btn btn-secondary" id="btn-library-pick">
+            <span class="btn-emoji" aria-hidden="true">🖼️</span> Pick from Photos
+          </button>
+        </div>
+        <input type="file" id="file-input" accept="image/*" hidden />
+        <input type="file" id="file-input-camera" accept="image/*" capture="environment" hidden />
+      </div>
+    </div>
+
+    <div class="section-head">
+      <h3>My Scans</h3>
+      <span class="muted small" id="scan-count">0</span>
+    </div>
+    <div class="library-grid" id="library-grid">
+      <div class="empty-hint">
+        <p>No scans yet. Tap <strong>Take a Photo</strong> to start.</p>
+        <p class="small muted">Every scan is saved here, private to this device. Nothing is uploaded.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section class="view" id="view-review" data-view="review" hidden>
+    <div class="review-stage">
+      <canvas id="review-canvas" aria-label="Current page preview"></canvas>
+    </div>
+
+    <div class="page-strip" id="page-strip" aria-label="Pages"></div>
+
+    <div class="action-row">
+      <button class="action-tile" id="act-crop">
+        <span class="emoji" aria-hidden="true">✂️</span><span>Crop</span>
+      </button>
+      <button class="action-tile" id="act-filter">
+        <span class="emoji" aria-hidden="true">🎨</span><span>Filter</span>
+      </button>
+      <button class="action-tile" id="act-rotate">
+        <span class="emoji" aria-hidden="true">↻</span><span>Rotate</span>
+      </button>
+      <button class="action-tile" id="act-delete">
+        <span class="emoji" aria-hidden="true">🗑️</span><span>Delete</span>
+      </button>
+    </div>
+
+    <div class="cta-stack">
+      <button class="btn btn-secondary" id="btn-add-page">
+        <span class="btn-emoji" aria-hidden="true">＋</span> Add Page
+      </button>
+      <button class="btn btn-primary" id="btn-done">
+        <span class="btn-emoji" aria-hidden="true">✓</span> Done — Export
+      </button>
+    </div>
+  </section>
+
+  <!-- CROP -->
+  <section class="view" id="view-crop" data-view="crop" hidden>
+    <div class="crop-stage" id="crop-stage">
+      <canvas id="crop-canvas"></canvas>
+      <svg id="crop-overlay" aria-hidden="true">
+        <polygon id="crop-poly" />
+        <circle class="handle" data-i="0" />
+        <circle class="handle" data-i="1" />
+        <circle class="handle" data-i="2" />
+        <circle class="handle" data-i="3" />
+      </svg>
+    </div>
+    <p class="hint">Drag the corners to your document. Auto-detect runs first; nudge if needed.</p>
+    <div class="cta-stack">
+      <button class="btn btn-ghost" id="btn-auto-detect">↺ Re-run Auto-Detect</button>
+      <button class="btn btn-ghost" id="btn-full-page">Use Full Image</button>
+      <button class="btn btn-primary" id="btn-apply-crop">Apply Crop</button>
+    </div>
+  </section>
+
+  <!-- FILTER -->
+  <section class="view" id="view-filter" data-view="filter" hidden>
+    <div class="review-stage">
+      <canvas id="filter-canvas"></canvas>
+    </div>
+    <div class="filter-row" role="radiogroup" aria-label="Filter">
+      <button class="filter-chip" data-filter="colour" aria-pressed="false">
+        <span class="swatch swatch-colour"></span><span>Colour</span>
+      </button>
+      <button class="filter-chip" data-filter="grey" aria-pressed="false">
+        <span class="swatch swatch-grey"></span><span>Greyscale</span>
+      </button>
+      <button class="filter-chip" data-filter="bw" aria-pressed="false">
+        <span class="swatch swatch-bw"></span><span>B&amp;W</span>
+      </button>
+      <button class="filter-chip" data-filter="enhance" aria-pressed="false">
+        <span class="swatch swatch-enhance"></span><span>Auto Enhance</span>
+      </button>
+    </div>
+    <div class="cta-stack">
+      <button class="btn btn-primary" id="btn-apply-filter">Apply</button>
+    </div>
+  </section>
+
+  <!-- EXPORT -->
+  <section class="view" id="view-export" data-view="export" hidden>
+    <div class="export-card">
+      <label class="field">
+        <span class="label">Name</span>
+        <input type="text" id="export-name" placeholder="Untitled scan" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span class="label">Paper size</span>
+        <select id="export-paper">
+          <option value="fit">Fit page to image</option>
+          <option value="a4">A4</option>
+          <option value="letter">Letter</option>
+          <option value="legal">Legal</option>
+          <option value="a5">A5</option>
+          <option value="receipt">Receipt (80mm)</option>
+          <option value="id">ID card</option>
+        </select>
+      </label>
+
+      <div class="page-count muted small" id="export-summary">1 page</div>
+
+      <div class="cta-stack">
+        <button class="btn btn-primary" id="btn-export-pdf">
+          <span class="btn-emoji" aria-hidden="true">📄</span> Save as PDF
+        </button>
+        <button class="btn btn-secondary" id="btn-export-jpg">
+          <span class="btn-emoji" aria-hidden="true">🖼️</span> Save Pages as JPG
+        </button>
+        <button class="btn btn-secondary" id="btn-share">
+          <span class="btn-emoji" aria-hidden="true">📤</span> Share
+        </button>
+        <button class="btn btn-ghost" id="btn-save-only">Save to Library Only</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section class="view" id="view-library" data-view="library" hidden>
+    <div class="library-toolbar">
+      <span class="muted small" id="library-count">0 scans</span>
+    </div>
+    <div class="library-grid" id="library-grid-full"></div>
+  </section>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- VERSION PILL -->
+<div class="version-pill" id="version-pill">v1</div>
+
+<script src="/js/util.js?v=1"></script>
+<script src="/js/imaging.js?v=1"></script>
+<script src="/js/pdf.js?v=1"></script>
+<script src="/js/db.js?v=1"></script>
+<script src="/js/app.js?v=1"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
+</script>
+</body>
+</html>
