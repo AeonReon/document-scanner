@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-<meta name="theme-color" content="#fff4e6" />
+<meta name="theme-color" content="#FAF6EC" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Scanner" />
 <title>Private Document Scanner</title>
 <link rel="manifest" href="/manifest.json" />
-<link rel="icon" href="/images/favicon-32.png?v=1" sizes="32x32" />
-<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=1" />
-<link rel="stylesheet" href="/styles.css?v=2" />
+<link rel="icon" href="/images/favicon-32.png?v=3" sizes="32x32" />
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=3" />
+<link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 
@@ -29,31 +29,22 @@
     <div class="hero">
       <div class="hero-card">
         <div class="hero-icon" aria-hidden="true">
-          <svg viewBox="0 0 64 64" width="64" height="64">
-            <defs>
-              <linearGradient id="hg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#ff7a59"/>
-                <stop offset="100%" stop-color="#ffad60"/>
-              </linearGradient>
-            </defs>
-            <rect x="10" y="8" width="36" height="48" rx="6" fill="#fff" stroke="url(#hg)" stroke-width="2"/>
-            <path d="M16 22h24M16 30h24M16 38h16" stroke="#3b2f4a" stroke-width="2.4" stroke-linecap="round"/>
-            <rect x="13" y="45" width="30" height="3" rx="1.5" fill="#5cc8aa"/>
-          </svg>
+          <img src="/images/icon-192.png?v=3" alt="" />
         </div>
-        <h2>Scan anything. Stays on your phone.</h2>
-        <p class="muted">Photos &rarr; clean PDF. Nothing leaves the device. Ever.</p>
-        <div class="cta-stack">
-          <button class="btn btn-primary" id="btn-camera">
-            <span class="btn-emoji" aria-hidden="true">📷</span> Take a Photo
-          </button>
-          <button class="btn btn-secondary" id="btn-library-pick">
-            <span class="btn-emoji" aria-hidden="true">🖼️</span> Pick from Photos
-          </button>
-        </div>
-        <input type="file" id="file-input" accept="image/*" hidden />
-        <input type="file" id="file-input-camera" accept="image/*" capture="environment" hidden />
+        <h2>Scan anything.<br>Stays on your phone.</h2>
+        <p>Photos turn into clean PDFs. Nothing leaves the device — no accounts, no cloud, no uploads.</p>
       </div>
+
+      <div class="cta-stack">
+        <button class="btn btn-primary" id="btn-camera">
+          <span class="btn-emoji" aria-hidden="true">📷</span> Take a Photo
+        </button>
+        <button class="btn btn-secondary" id="btn-library-pick">
+          <span class="btn-emoji" aria-hidden="true">🖼️</span> Pick from Photos
+        </button>
+      </div>
+      <input type="file" id="file-input" accept="image/*" hidden />
+      <input type="file" id="file-input-camera" accept="image/*" capture="environment" hidden />
     </div>
 
     <div class="section-head">
@@ -249,12 +240,12 @@
 <!-- VERSION PILL -->
 <div class="version-pill" id="version-pill">v1</div>
 
-<script src="/js/util.js?v=2"></script>
-<script src="/js/imaging.js?v=2"></script>
-<script src="/js/pdf.js?v=2"></script>
-<script src="/js/db.js?v=2"></script>
-<script src="/js/annotate.js?v=2"></script>
-<script src="/js/app.js?v=2"></script>
+<script src="/js/util.js?v=3"></script>
+<script src="/js/imaging.js?v=3"></script>
+<script src="/js/pdf.js?v=3"></script>
+<script src="/js/db.js?v=3"></script>
+<script src="/js/annotate.js?v=3"></script>
+<script src="/js/app.js?v=3"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
