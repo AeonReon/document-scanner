@@ -214,6 +214,7 @@ window.DS = window.DS || {};
   function done() {
     DS.app.setView('review');
     DS.app.renderReview();
+    if (DS.app.persist) DS.app.persist();
   }
 
   // Bake annotations onto a canvas (used at export time).

@@ -61,4 +61,17 @@ Run 3 (2026-06-05) — shipped:
     PDF (plain multi-page + password-locked) build to valid %PDF-1.4.
     MD5/RC4 pass known-answer vectors.
 
+Run 4 (2026-06-05) — UX fixes from first real user test:
+  - SCANS NOW AUTO-SAVE. Every scan persists to "My Scans" the moment a photo
+    is taken and after every edit (persist() -> saveDocToLibrary). Previously a
+    scan only survived if you completed the Export flow, so users who pressed
+    Back lost their photos. The Back arrow no longer discards — it just returns
+    home, scan kept.
+  - Clean human-readable version pill: APP_VERSION = 'v5' (one place to bump),
+    replacing the ugly build-stamp digits ("v605004"). Build-stamp is still used
+    only to trigger the "new version — tap to reload" banner.
+  - Review screen shows a status line ("Auto-cleaned · saved to My Scans · N
+    pages") so it's obvious the photo was processed and stored.
+  - Delete on a single-page scan now removes it from My Scans (DB.remove).
+
 No API keys. No env vars. Nothing to configure. Zero network calls beyond PWA assets.

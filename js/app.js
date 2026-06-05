@@ -8,6 +8,17 @@ window.DS = window.DS || {};
   const P = DS.pdf;
   const DB = DS.db;
 
+  // Human-readable build number shown in the corner pill. Bump on each ship.
+  const APP_VERSION = 'v5';
+
+  // Auto-save the current scan to "My Scans" so nothing is ever lost when the
+  // user navigates away. Cheap enough to call after each edit (not per stroke).
+  async function persist() {
+    try {
+      if (state.doc && state.doc.pages.length) await saveDocToLibrary();
+    } catch (e) { console.warn('autosave failed', e); }
+  }
+
   // ---------- state ----------
   const state = {
     view: 'home',
@@ -49,13 +60,13 @@ window.DS = window.DS || {};
     window.scrollTo(0, 0);
   }
 
-  function back() {
+  async function back() {
     if (state.view === 'review') {
-      if (confirm('Discard this scan? Saved scans in your Library are kept.')) {
-        state.doc = null;
-        renderHome();
-        setView('home');
-      }
+      // Scans auto-save to "My Scans", so backing out never loses anything.
+      await persist();
+      state.doc = null;
+      await renderHome();
+      setView('home');
       return;
     }
     if (state.view === 'crop' || state.view === 'filter' || state.view === 'annotate' || state.view === 'export') {
@@ -103,6 +114,7 @@ window.DS = window.DS || {};
     state.doc.updatedAt = Date.now();
     setView('review');
     renderReview();
+    await persist();
   }
 
   async function pageFromFile(file) {
@@ -238,6 +250,13 @@ window.DS = window.DS || {};
     const stageCanvas = $('#review-canvas');
     drawCanvasInto(stageCanvas, page.processed || page.sourceCanvas);
 
+    const note = $('#review-note');
+    if (note) {
+      const n = state.doc.pages.length;
+      const filterLabel = { auto: 'Auto-cleaned', grey: 'Greyscale', bw: 'B&W', colour: 'Original', enhance: 'Auto-cleaned' }[page.filter] || 'Auto-cleaned';
+      note.textContent = `✨ ${filterLabel} · saved to My Scans · ${n} page${n === 1 ? '' : 's'}`;
+    }
+
     const strip = $('#page-strip');
     strip.innerHTML = '';
     state.doc.pages.forEach((p, i) => {
@@ -359,6 +378,7 @@ window.DS = window.DS || {};
     haptic();
     page.processed = await processPage(page);
     setView('review'); renderReview();
+    await persist();
     toast('Cropped');
   }
 
@@ -406,9 +426,10 @@ window.DS = window.DS || {};
   async function applyFilterChoice() {
     const page = currentPage();
     if (!page) return;
-    page.filter = state.pendingFilter || 'colour';
+    page.filter = state.pendingFilter || 'auto';
     page.processed = await processPage(page);
     setView('review'); renderReview();
+    await persist();
     toast('Filter applied');
   }
 
@@ -598,21 +619,25 @@ window.DS = window.DS || {};
     page.corners = [page.corners[3], page.corners[0], page.corners[1], page.corners[2]];
     page.processed = await processPage(page);
     renderReview();
+    await persist();
   }
 
   async function deleteCurrent() {
     if (!state.doc) return;
     if (state.doc.pages.length <= 1) {
-      if (!confirm('Delete this page and discard the scan?')) return;
+      if (!confirm('Delete this scan? This removes it from My Scans.')) return;
+      try { await DB.remove(state.doc.id); } catch {}
       state.doc = null;
       await renderHome();
       setView('home');
+      toast('Deleted');
       return;
     }
     if (!confirm('Delete this page?')) return;
     state.doc.pages.splice(state.pageIdx, 1);
     state.pageIdx = Math.max(0, state.pageIdx - 1);
     renderReview();
+    await persist();
   }
 
   // ---------- build stamp ----------
@@ -629,8 +654,6 @@ window.DS = window.DS || {};
     if (s == null) return;
     if (initialStamp == null) {
       initialStamp = s;
-      const pill = $('#version-pill');
-      if (pill) pill.textContent = 'v' + String(s).slice(-6);
       return;
     }
     if (s !== initialStamp && !$('#update-banner')) {
@@ -645,6 +668,8 @@ window.DS = window.DS || {};
   // ---------- boot ----------
   function boot() {
     bind();
+    const pill = $('#version-pill');
+    if (pill) pill.textContent = APP_VERSION;
     setView('home');
     renderHome();
     setTimeout(checkStamp, 1500);
@@ -654,6 +679,7 @@ window.DS = window.DS || {};
   DS.app = {
     setView,
     renderReview,
+    persist,
     currentView: () => state.view,
   };
 

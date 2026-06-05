@@ -10,9 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="Scanner" />
 <title>Private Document Scanner</title>
 <link rel="manifest" href="/manifest.json" />
-<link rel="icon" href="/images/favicon-32.png?v=4" sizes="32x32" />
-<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=4" />
-<link rel="stylesheet" href="/styles.css?v=4" />
+<link rel="icon" href="/images/favicon-32.png?v=5" sizes="32x32" />
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=5" />
+<link rel="stylesheet" href="/styles.css?v=5" />
 </head>
 <body>
 
@@ -29,7 +29,7 @@
     <div class="hero">
       <div class="hero-card">
         <div class="hero-icon" aria-hidden="true">
-          <img src="/images/icon-192.png?v=4" alt="" />
+          <img src="/images/icon-192.png?v=5" alt="" />
         </div>
         <h2>Scan anything.<br>Stays on your phone.</h2>
         <p>Photos turn into clean PDFs. Nothing leaves the device — no accounts, no cloud, no uploads.</p>
@@ -64,6 +64,8 @@
     <div class="review-stage">
       <canvas id="review-canvas" aria-label="Current page preview"></canvas>
     </div>
+
+    <p class="hint" id="review-note">✨ Auto-cleaned &amp; saved to My Scans</p>
 
     <div class="page-strip" id="page-strip" aria-label="Pages"></div>
 
@@ -238,14 +240,14 @@
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- VERSION PILL -->
-<div class="version-pill" id="version-pill">v1</div>
+<div class="version-pill" id="version-pill">v5</div>
 
-<script src="/js/util.js?v=4"></script>
-<script src="/js/imaging.js?v=4"></script>
-<script src="/js/pdf.js?v=4"></script>
-<script src="/js/db.js?v=4"></script>
-<script src="/js/annotate.js?v=4"></script>
-<script src="/js/app.js?v=4"></script>
+<script src="/js/util.js?v=5"></script>
+<script src="/js/imaging.js?v=5"></script>
+<script src="/js/pdf.js?v=5"></script>
+<script src="/js/db.js?v=5"></script>
+<script src="/js/annotate.js?v=5"></script>
+<script src="/js/app.js?v=5"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
