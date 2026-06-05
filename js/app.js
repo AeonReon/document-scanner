@@ -116,7 +116,7 @@ window.DS = window.DS || {};
       sourceFullCanvas: fullCanvas,
       sourceCanvas: displayCanvas,
       corners,
-      filter: 'colour',
+      filter: 'auto',
       annotations: { strokes: [], texts: [] },
       processed: null,
     };
@@ -383,7 +383,7 @@ window.DS = window.DS || {};
   function openFilter() {
     const page = currentPage();
     if (!page) return;
-    state.pendingFilter = page.filter || 'colour';
+    state.pendingFilter = page.filter || 'auto';
     setView('filter');
     drawCanvasInto($('#filter-canvas'), page.processed || page.sourceCanvas);
     $$('#view-filter .filter-chip').forEach(b => {

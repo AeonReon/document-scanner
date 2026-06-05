@@ -1,22 +1,22 @@
 // Document Scanner service worker.
 // Network-first for HTML so deploys land. SWR for static assets.
-const VERSION = 'docscan-v3';
+const VERSION = 'docscan-v4';
 const PRECACHE = [
   '/',
   '/index.html',
-  '/styles.css?v=3',
+  '/styles.css?v=4',
   '/manifest.json',
-  '/images/favicon-32.png?v=3',
-  '/images/apple-touch-icon.png?v=3',
-  '/images/icon-192.png?v=3',
-  '/images/icon-512.png?v=3',
-  '/images/icon-maskable.png?v=3',
-  '/js/util.js?v=3',
-  '/js/imaging.js?v=3',
-  '/js/pdf.js?v=3',
-  '/js/db.js?v=3',
-  '/js/annotate.js?v=3',
-  '/js/app.js?v=3',
+  '/images/favicon-32.png?v=4',
+  '/images/apple-touch-icon.png?v=4',
+  '/images/icon-192.png?v=4',
+  '/images/icon-512.png?v=4',
+  '/images/icon-maskable.png?v=4',
+  '/js/util.js?v=4',
+  '/js/imaging.js?v=4',
+  '/js/pdf.js?v=4',
+  '/js/db.js?v=4',
+  '/js/annotate.js?v=4',
+  '/js/app.js?v=4',
 ];
 
 self.addEventListener('install', (e) => {

@@ -10,9 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="Scanner" />
 <title>Private Document Scanner</title>
 <link rel="manifest" href="/manifest.json" />
-<link rel="icon" href="/images/favicon-32.png?v=3" sizes="32x32" />
-<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=3" />
-<link rel="stylesheet" href="/styles.css?v=3" />
+<link rel="icon" href="/images/favicon-32.png?v=4" sizes="32x32" />
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=4" />
+<link rel="stylesheet" href="/styles.css?v=4" />
 </head>
 <body>
 
@@ -29,7 +29,7 @@
     <div class="hero">
       <div class="hero-card">
         <div class="hero-icon" aria-hidden="true">
-          <img src="/images/icon-192.png?v=3" alt="" />
+          <img src="/images/icon-192.png?v=4" alt="" />
         </div>
         <h2>Scan anything.<br>Stays on your phone.</h2>
         <p>Photos turn into clean PDFs. Nothing leaves the device — no accounts, no cloud, no uploads.</p>
@@ -121,8 +121,8 @@
       <canvas id="filter-canvas"></canvas>
     </div>
     <div class="filter-row" role="radiogroup" aria-label="Filter">
-      <button class="filter-chip" data-filter="colour" aria-pressed="false">
-        <span class="swatch swatch-colour"></span><span>Colour</span>
+      <button class="filter-chip" data-filter="auto" aria-pressed="false">
+        <span class="swatch swatch-enhance"></span><span>Auto</span>
       </button>
       <button class="filter-chip" data-filter="grey" aria-pressed="false">
         <span class="swatch swatch-grey"></span><span>Greyscale</span>
@@ -130,8 +130,8 @@
       <button class="filter-chip" data-filter="bw" aria-pressed="false">
         <span class="swatch swatch-bw"></span><span>B&amp;W</span>
       </button>
-      <button class="filter-chip" data-filter="enhance" aria-pressed="false">
-        <span class="swatch swatch-enhance"></span><span>Auto Enhance</span>
+      <button class="filter-chip" data-filter="colour" aria-pressed="false">
+        <span class="swatch swatch-colour"></span><span>Original</span>
       </button>
     </div>
     <div class="cta-stack">
@@ -240,12 +240,12 @@
 <!-- VERSION PILL -->
 <div class="version-pill" id="version-pill">v1</div>
 
-<script src="/js/util.js?v=3"></script>
-<script src="/js/imaging.js?v=3"></script>
-<script src="/js/pdf.js?v=3"></script>
-<script src="/js/db.js?v=3"></script>
-<script src="/js/annotate.js?v=3"></script>
-<script src="/js/app.js?v=3"></script>
+<script src="/js/util.js?v=4"></script>
+<script src="/js/imaging.js?v=4"></script>
+<script src="/js/pdf.js?v=4"></script>
+<script src="/js/db.js?v=4"></script>
+<script src="/js/annotate.js?v=4"></script>
+<script src="/js/app.js?v=4"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));

@@ -69,8 +69,18 @@ window.DS = window.DS || {};
     if (magMax < 1e-3) {
       return fullImageCorners();
     }
-    // Threshold: keep top ~5% by gradient
-    const thr = magMax * 0.22;
+    // Adaptive threshold: keep roughly the strongest ~12% of gradient pixels.
+    // A percentile is far more robust than a fixed fraction of the single max
+    // value — one bright highlight or specular glint can blow out `magMax` and
+    // make a fixed fraction reject every real document edge. We keep a small
+    // floor so a noisy, low-contrast frame can't promote noise to "edges".
+    const BINS = 256;
+    const hist = new Uint32Array(BINS);
+    const invStep = (BINS - 1) / magMax;
+    for (let i = 0; i < N; i++) hist[(mag[i] * invStep) | 0]++;
+    let want = Math.round(N * 0.12), acc = 0, thrBin = BINS - 1;
+    for (let b = BINS - 1; b >= 0; b--) { acc += hist[b]; if (acc >= want) { thrBin = b; break; } }
+    const thr = Math.max(magMax * 0.10, thrBin / invStep);
     const edge = new Uint8Array(N);
     for (let i = 0; i < N; i++) edge[i] = mag[i] > thr ? 1 : 0;
 
@@ -337,11 +347,85 @@ window.DS = window.DS || {};
   // ---------- filters ----------
   // All filters take an HTMLCanvasElement and return a new canvas.
   function applyFilter(canvas, kind) {
-    if (kind === 'colour' || !kind) return autoLevels(canvas, false);
-    if (kind === 'enhance') return autoLevels(canvas, true);
-    if (kind === 'grey') return greyscale(canvas);
-    if (kind === 'bw') return blackWhite(canvas);
+    // 'auto' is the default "looks like a scan" look: shadow/illumination
+    // removal + auto white balance + contrast. 'enhance' is kept as an alias so
+    // documents saved before this change still resolve to the magic look.
+    if (kind === 'auto' || kind === 'enhance' || !kind) return magicColor(canvas);
+    if (kind === 'colour' || kind === 'original') return autoLevels(canvas, false);
+    // Greyscale / B&W look cleanest when fed the illumination-normalised image,
+    // so they build on the same magic-colour base rather than the raw photo.
+    if (kind === 'grey') return greyscale(magicColor(canvas));
+    if (kind === 'bw') return blackWhite(magicColor(canvas));
     return canvas;
+  }
+
+  // ---------- magic colour (shadow / illumination removal) ----------
+  // This is the step that makes a phone photo read as a *scan* instead of a
+  // snapshot. Real scanner apps (CamScanner "Magic Color", Adobe Scan, Scanner
+  // Pro) all do a version of this: estimate the page's background illumination
+  // and divide it out, so uneven lighting and shadows flatten to clean white
+  // paper while ink stays dark. Doing it per-channel also neutralises colour
+  // casts — automatic white balance — for free. A gentle contrast lift around
+  // the paper level finishes the "crisp document" look.
+  function magicColor(canvas) {
+    const W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const id = ctx.getImageData(0, 0, W, H);
+    const d = id.data;
+
+    // 1. Estimate the background (the paper) at low resolution — fast, and the
+    //    downscale + heavy blur naturally smooths sparse dark text into the
+    //    surrounding paper level, so the estimate tracks the lighting not the ink.
+    const BGMAX = 220;
+    const s = Math.min(1, BGMAX / Math.max(W, H));
+    const bw = Math.max(1, Math.round(W * s));
+    const bh = Math.max(1, Math.round(H * s));
+    const small = makeCanvas(bw, bh);
+    small.getContext('2d').drawImage(canvas, 0, 0, bw, bh);
+    const sd = small.getContext('2d').getImageData(0, 0, bw, bh).data;
+    const rC = new Uint8ClampedArray(bw * bh);
+    const gC = new Uint8ClampedArray(bw * bh);
+    const bC = new Uint8ClampedArray(bw * bh);
+    for (let i = 0, j = 0; i < sd.length; i += 4, j++) { rC[j] = sd[i]; gC[j] = sd[i + 1]; bC[j] = sd[i + 2]; }
+    const rad = Math.max(2, Math.round(Math.min(bw, bh) / 5));
+    // Two box-blur passes approximate a Gaussian background.
+    const rB = boxBlur(boxBlur(rC, bw, bh, rad), bw, bh, rad);
+    const gB = boxBlur(boxBlur(gC, bw, bh, rad), bw, bh, rad);
+    const bB = boxBlur(boxBlur(bC, bw, bh, rad), bw, bh, rad);
+
+    // 2. Divide each full-res pixel by the bilinearly-sampled background, then
+    //    lift contrast around the paper pivot so paper goes clean-white and ink
+    //    deepens toward black.
+    const sx = (bw - 1) / Math.max(1, W - 1);
+    const sy = (bh - 1) / Math.max(1, H - 1);
+    const CONTRAST = 1.18, PIVOT = 232;
+    for (let y = 0; y < H; y++) {
+      const fy = y * sy, y0 = fy | 0, y1 = Math.min(bh - 1, y0 + 1), wy = fy - y0;
+      for (let x = 0; x < W; x++) {
+        const fx = x * sx, x0 = fx | 0, x1 = Math.min(bw - 1, x0 + 1), wx = fx - x0;
+        const p00 = y0 * bw + x0, p01 = y0 * bw + x1, p10 = y1 * bw + x0, p11 = y1 * bw + x1;
+        const bgR = bilerp(rB, p00, p01, p10, p11, wx, wy);
+        const bgG = bilerp(gB, p00, p01, p10, p11, wx, wy);
+        const bgB = bilerp(bB, p00, p01, p10, p11, wx, wy);
+        const i = (y * W + x) * 4;
+        let r = d[i]     * 255 / Math.max(8, bgR);
+        let g = d[i + 1] * 255 / Math.max(8, bgG);
+        let b = d[i + 2] * 255 / Math.max(8, bgB);
+        r = (r - PIVOT) * CONTRAST + PIVOT;
+        g = (g - PIVOT) * CONTRAST + PIVOT;
+        b = (b - PIVOT) * CONTRAST + PIVOT;
+        d[i] = clamp(r); d[i + 1] = clamp(g); d[i + 2] = clamp(b);
+      }
+    }
+    const out = makeCanvas(W, H);
+    out.getContext('2d').putImageData(id, 0, 0);
+    return out;
+  }
+
+  function bilerp(arr, p00, p01, p10, p11, wx, wy) {
+    const top = arr[p00] * (1 - wx) + arr[p01] * wx;
+    const bot = arr[p10] * (1 - wx) + arr[p11] * wx;
+    return top * (1 - wy) + bot * wy;
   }
 
   function autoLevels(canvas, strong) {

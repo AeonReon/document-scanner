@@ -45,4 +45,20 @@ Deferred from Run 2 — pending user decision:
   - OCR via Tesseract.js — flagged because it's 5MB third-party WASM blob.
     User's "build it ourselves before third-party" rule applies. Not bundled.
 
+Run 3 (2026-06-05) — shipped:
+  - "Auto" magic-colour enhancement (js/imaging.js magicColor): per-channel
+    divide-by-blurred-background removes uneven lighting + shadows, auto
+    white-balances, lifts contrast. This is the step that makes a phone photo
+    read as a SCAN not a snapshot. Now the DEFAULT filter applied on capture
+    (page.filter = 'auto'), so every new scan looks cleaned-up immediately.
+  - Greyscale + B&W now build on the magic-colour base for cleaner output.
+  - Filter chips reordered: Auto (default) / Greyscale / B&W / Original.
+  - Edge detection: percentile-based adaptive gradient threshold replaces the
+    brittle fraction-of-max threshold, so the document is found + straightened
+    far more reliably on real photos (one glare no longer defeats detection).
+  - Verified in-browser: synthetic skewed+shadowed page -> detected corners,
+    dewarped upright, paper went 0% -> 82.6% clean-white with text intact.
+    PDF (plain multi-page + password-locked) build to valid %PDF-1.4.
+    MD5/RC4 pass known-answer vectors.
+
 No API keys. No env vars. Nothing to configure. Zero network calls beyond PWA assets.
