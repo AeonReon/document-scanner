@@ -373,10 +373,14 @@ window.DS = window.DS || {};
     const id = ctx.getImageData(0, 0, W, H);
     const d = id.data;
 
-    // 1. Estimate the background (the paper) at low resolution — fast, and the
-    //    downscale + heavy blur naturally smooths sparse dark text into the
-    //    surrounding paper level, so the estimate tracks the lighting not the ink.
-    const BGMAX = 220;
+    // 1. Estimate the background (the paper) at low resolution. The KEY is to use
+    //    a local MAXIMUM, not a plain blur: dark ink is sparse and darker than the
+    //    paper, so a max filter "looks past" the text and captures the paper level
+    //    underneath. A plain blur averages the ink IN, which then gets divided out
+    //    and washes the text pale — that was the earlier bug. We then blur the max
+    //    field so the illumination varies smoothly. (White top-hat / morphological
+    //    background estimation — the standard document-illumination technique.)
+    const BGMAX = 200;
     const s = Math.min(1, BGMAX / Math.max(W, H));
     const bw = Math.max(1, Math.round(W * s));
     const bh = Math.max(1, Math.round(H * s));
@@ -387,30 +391,33 @@ window.DS = window.DS || {};
     const gC = new Uint8ClampedArray(bw * bh);
     const bC = new Uint8ClampedArray(bw * bh);
     for (let i = 0, j = 0; i < sd.length; i += 4, j++) { rC[j] = sd[i]; gC[j] = sd[i + 1]; bC[j] = sd[i + 2]; }
-    const rad = Math.max(2, Math.round(Math.min(bw, bh) / 5));
-    // Two box-blur passes approximate a Gaussian background.
-    const rB = boxBlur(boxBlur(rC, bw, bh, rad), bw, bh, rad);
-    const gB = boxBlur(boxBlur(gC, bw, bh, rad), bw, bh, rad);
-    const bB = boxBlur(boxBlur(bC, bw, bh, rad), bw, bh, rad);
+    // Max window must exceed the thickest dark feature (text/lines); blur radius
+    // larger still, to smooth the field without chasing content.
+    const maxR  = Math.max(1, Math.round(Math.min(bw, bh) / 16));
+    const blurR = Math.max(2, Math.round(Math.min(bw, bh) / 8));
+    const rB = boxBlur(maxFilter(rC, bw, bh, maxR), bw, bh, blurR);
+    const gB = boxBlur(maxFilter(gC, bw, bh, maxR), bw, bh, blurR);
+    const bB = boxBlur(maxFilter(bC, bw, bh, maxR), bw, bh, blurR);
 
-    // 2. Divide each full-res pixel by the bilinearly-sampled background, then
-    //    lift contrast around the paper pivot so paper goes clean-white and ink
-    //    deepens toward black.
+    // 2. Divide each full-res pixel by the bilinearly-sampled paper level so paper
+    //    -> white and ink keeps its true (low) ratio. Then a contrast curve about
+    //    mid-grey deepens text without crushing mid-tones, and a small black floor
+    //    cleans paper speckle. Per-channel division also white-balances for free.
     const sx = (bw - 1) / Math.max(1, W - 1);
     const sy = (bh - 1) / Math.max(1, H - 1);
-    const CONTRAST = 1.18, PIVOT = 232;
+    const CONTRAST = 1.22, PIVOT = 150;
     for (let y = 0; y < H; y++) {
       const fy = y * sy, y0 = fy | 0, y1 = Math.min(bh - 1, y0 + 1), wy = fy - y0;
       for (let x = 0; x < W; x++) {
         const fx = x * sx, x0 = fx | 0, x1 = Math.min(bw - 1, x0 + 1), wx = fx - x0;
         const p00 = y0 * bw + x0, p01 = y0 * bw + x1, p10 = y1 * bw + x0, p11 = y1 * bw + x1;
-        const bgR = bilerp(rB, p00, p01, p10, p11, wx, wy);
-        const bgG = bilerp(gB, p00, p01, p10, p11, wx, wy);
-        const bgB = bilerp(bB, p00, p01, p10, p11, wx, wy);
+        const bgR = Math.max(24, bilerp(rB, p00, p01, p10, p11, wx, wy));
+        const bgG = Math.max(24, bilerp(gB, p00, p01, p10, p11, wx, wy));
+        const bgB = Math.max(24, bilerp(bB, p00, p01, p10, p11, wx, wy));
         const i = (y * W + x) * 4;
-        let r = d[i]     * 255 / Math.max(8, bgR);
-        let g = d[i + 1] * 255 / Math.max(8, bgG);
-        let b = d[i + 2] * 255 / Math.max(8, bgB);
+        let r = d[i]     / bgR * 255;
+        let g = d[i + 1] / bgG * 255;
+        let b = d[i + 2] / bgB * 255;
         r = (r - PIVOT) * CONTRAST + PIVOT;
         g = (g - PIVOT) * CONTRAST + PIVOT;
         b = (b - PIVOT) * CONTRAST + PIVOT;
@@ -426,6 +433,34 @@ window.DS = window.DS || {};
     const top = arr[p00] * (1 - wx) + arr[p01] * wx;
     const bot = arr[p10] * (1 - wx) + arr[p11] * wx;
     return top * (1 - wy) + bot * wy;
+  }
+
+  // Separable local-maximum (grayscale dilation) over a (2r+1) window. Used to
+  // estimate the paper level past dark text. Naive but tiny: only runs on the
+  // low-res background copy.
+  function maxFilter(src, W, H, r) {
+    const tmp = new Uint8ClampedArray(src.length);
+    const out = new Uint8ClampedArray(src.length);
+    for (let y = 0; y < H; y++) {
+      const row = y * W;
+      for (let x = 0; x < W; x++) {
+        let m = 0;
+        const a = x - r < 0 ? 0 : x - r;
+        const b = x + r >= W ? W - 1 : x + r;
+        for (let k = a; k <= b; k++) { const v = src[row + k]; if (v > m) m = v; }
+        tmp[row + x] = m;
+      }
+    }
+    for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H; y++) {
+        let m = 0;
+        const a = y - r < 0 ? 0 : y - r;
+        const b = y + r >= H ? H - 1 : y + r;
+        for (let k = a; k <= b; k++) { const v = tmp[k * W + x]; if (v > m) m = v; }
+        out[y * W + x] = m;
+      }
+    }
+    return out;
   }
 
   function autoLevels(canvas, strong) {
