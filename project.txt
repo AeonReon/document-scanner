@@ -75,3 +75,15 @@ Run 4 (2026-06-05) — UX fixes from first real user test:
   - Delete on a single-page scan now removes it from My Scans (DB.remove).
 
 No API keys. No env vars. Nothing to configure. Zero network calls beyond PWA assets.
+
+Run 5 (2026-06-05) — fix washed-out enhancement + edge feedback:
+  - magicColor was dividing by a Gaussian-blurred background; the blur averaged
+    the dark TEXT into the paper estimate, so dividing it back out lifted text
+    pale = washed out. Fixed by estimating the paper level with a local-MAXIMUM
+    (grayscale dilation) before blurring — the max "sees past" sparse dark ink to
+    the paper underneath (white top-hat / morphological background). Result: paper
+    -> clean white, ink stays dark, colours (logos/stamps) preserved. Verified
+    VISUALLY on a synthetic shadowed+skewed colour invoice (screenshot test).
+  - Review status line now reports whether edges were auto-detected
+    ("cropped to page" vs "no edges found — tap Crop") so auto-crop is visible.
+  - v6.

@@ -9,7 +9,7 @@ window.DS = window.DS || {};
   const DB = DS.db;
 
   // Human-readable build number shown in the corner pill. Bump on each ship.
-  const APP_VERSION = 'v5';
+  const APP_VERSION = 'v6';
 
   // Auto-save the current scan to "My Scans" so nothing is ever lost when the
   // user navigates away. Cheap enough to call after each edit (not per stroke).
@@ -122,12 +122,16 @@ window.DS = window.DS || {};
     const fullCanvas = I.imgToCanvas(img, 2400);
     const displayCanvas = I.imgToCanvas(img, 1200);
     const corners = I.autoDetectCorners(img);
+    const full = I.fullImageCorners();
+    const foundEdges = !corners.every((p, i) =>
+      Math.abs(p[0] - full[i][0]) < 1e-6 && Math.abs(p[1] - full[i][1]) < 1e-6);
     const page = {
       id: uid(),
       sourceBlob: file,
       sourceFullCanvas: fullCanvas,
       sourceCanvas: displayCanvas,
       corners,
+      autoEdges: foundEdges,
       filter: 'auto',
       annotations: { strokes: [], texts: [] },
       processed: null,
@@ -254,7 +258,8 @@ window.DS = window.DS || {};
     if (note) {
       const n = state.doc.pages.length;
       const filterLabel = { auto: 'Auto-cleaned', grey: 'Greyscale', bw: 'B&W', colour: 'Original', enhance: 'Auto-cleaned' }[page.filter] || 'Auto-cleaned';
-      note.textContent = `✨ ${filterLabel} · saved to My Scans · ${n} page${n === 1 ? '' : 's'}`;
+      const edgeMsg = page.autoEdges === false ? 'no edges found — tap Crop' : 'cropped to page';
+      note.textContent = `✨ ${filterLabel} · ${edgeMsg} · ${n} page${n === 1 ? '' : 's'} saved`;
     }
 
     const strip = $('#page-strip');
