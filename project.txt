@@ -87,3 +87,20 @@ Run 5 (2026-06-05) — fix washed-out enhancement + edge feedback:
   - Review status line now reports whether edges were auto-detected
     ("cropped to page" vs "no edges found — tap Crop") so auto-crop is visible.
   - v6.
+
+Run 6 (2026-06-05) — live camera + PDF size:
+  - LIVE AUTO-CAPTURE CAMERA (js/camera.js): getUserMedia video with a real-time
+    blue document outline (autoDetectCorners per ~160ms tick on a 360px frame).
+    Auto-captures when the quad holds steady for ~7 ticks + 1.4s cooldown; manual
+    shutter always available; Auto-capture On/Off toggle. Stays in the camera so
+    you can snap page after page into one doc, with a live page counter and Done.
+    Graceful fallback to the OS photo picker if getUserMedia is unsupported/denied.
+    "Take a Photo" (home) starts a new doc; "Add Page" (review) appends.
+  - app.js refactor: addPages() (view-neutral) split from addPagesFromFiles();
+    exposed DS.app.addPages/openReview/pageCount/startNewDoc for the camera module.
+    New 'camera' view in VIEWS + back() handling (closes stream).
+  - PDF SIZE OPTION at export: Smaller / Balanced / High. Caps the longest image
+    edge (1000/1600/2400) and JPEG quality (0.55/0.72/0.88) per page before
+    building. Export toast now reports the resulting file size. Verified on a
+    photographic test page: Small 99 KB / Balanced 356 KB / High 1448 KB.
+  - v7.

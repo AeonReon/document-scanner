@@ -9,7 +9,7 @@ window.DS = window.DS || {};
   const DB = DS.db;
 
   // Human-readable build number shown in the corner pill. Bump on each ship.
-  const APP_VERSION = 'v6';
+  const APP_VERSION = 'v7';
 
   // Auto-save the current scan to "My Scans" so nothing is ever lost when the
   // user navigates away. Cheap enough to call after each edit (not per stroke).
@@ -37,7 +37,7 @@ window.DS = window.DS || {};
   // }
 
   // ---------- view routing ----------
-  const VIEWS = ['home', 'review', 'crop', 'filter', 'annotate', 'export', 'library'];
+  const VIEWS = ['home', 'camera', 'review', 'crop', 'filter', 'annotate', 'export', 'library'];
 
   function setView(name) {
     state.view = name;
@@ -50,6 +50,7 @@ window.DS = window.DS || {};
     $('#library-btn').hidden = (name === 'library');
     $('#page-title').textContent = {
       home: 'Scanner',
+      camera: 'Scan',
       review: state.doc ? (state.doc.name || 'Untitled') : 'Review',
       crop: 'Crop & Align',
       filter: 'Filter',
@@ -61,6 +62,12 @@ window.DS = window.DS || {};
   }
 
   async function back() {
+    if (state.view === 'camera') {
+      if (DS.camera) DS.camera.close();
+      if (state.doc && state.doc.pages.length) { setView('review'); renderReview(); }
+      else { state.doc = null; await renderHome(); setView('home'); }
+      return;
+    }
     if (state.view === 'review') {
       // Scans auto-save to "My Scans", so backing out never loses anything.
       await persist();
@@ -98,24 +105,36 @@ window.DS = window.DS || {};
     return 'Scan ' + d.toISOString().slice(0, 10) + ' ' + d.toTimeString().slice(0, 5);
   }
 
-  async function addPagesFromFiles(files) {
-    if (!files || !files.length) return;
+  // Add one or more pages to the current doc. Does NOT change the view, so the
+  // live camera can keep capturing. Returns the number actually added.
+  async function addPages(files) {
+    if (!files || !files.length) return 0;
     if (!state.doc) newDoc();
-    const list = Array.from(files);
-    for (const f of list) {
+    let added = 0;
+    for (const f of Array.from(files)) {
       try {
-        const page = await pageFromFile(f);
-        state.doc.pages.push(page);
+        state.doc.pages.push(await pageFromFile(f));
+        added++;
       } catch (e) {
         console.warn('skip file', f.name, e);
       }
     }
-    state.pageIdx = state.doc.pages.length - 1;
-    state.doc.updatedAt = Date.now();
-    setView('review');
-    renderReview();
-    await persist();
+    if (added) {
+      state.pageIdx = state.doc.pages.length - 1;
+      state.doc.updatedAt = Date.now();
+      await persist();
+    }
+    return added;
   }
+
+  async function addPagesFromFiles(files) {
+    const n = await addPages(files);
+    if (n) { setView('review'); renderReview(); }
+  }
+
+  function openReview() { setView('review'); renderReview(); }
+  function pageCount() { return state.doc ? state.doc.pages.length : 0; }
+  function startNewDoc() { state.doc = null; state.pageIdx = 0; }
 
   async function pageFromFile(file) {
     const img = await fileToImage(file);
@@ -447,18 +466,37 @@ window.DS = window.DS || {};
       `${state.doc.pages.length} page${state.doc.pages.length === 1 ? '' : 's'}`;
   }
 
+  // Size presets for PDF export: cap the longest image edge and JPEG quality.
+  // Smaller pixels + lower quality = dramatically smaller files.
+  const PDF_QUALITY = {
+    small:    { maxDim: 1000, q: 0.55 },
+    balanced: { maxDim: 1600, q: 0.72 },
+    high:     { maxDim: 2400, q: 0.88 },
+  };
+
+  function formatBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
   async function exportPdf({ share = false } = {}) {
     if (!state.doc) return;
     const name = ($('#export-name').value || 'Scan').trim();
     state.doc.name = name;
     const paper = $('#export-paper').value;
     const password = ($('#export-password').value || '').trim();
+    const sizeKey = ($('#export-quality') && $('#export-quality').value) || 'balanced';
+    const { maxDim, q } = PDF_QUALITY[sizeKey] || PDF_QUALITY.balanced;
     const pages = [];
     for (const p of state.doc.pages) {
       const baseCanvas = p.processed || I.dewarp(p.sourceFullCanvas, p.corners);
       const baked = DS.annotate.bake(p, baseCanvas);
-      const jpeg = await P.canvasToJpegBytes(baked, 0.86);
-      pages.push({ jpeg, widthPx: baked.width, heightPx: baked.height });
+      // Downscale to the chosen cap before encoding (imgToCanvas accepts a canvas).
+      const out = (Math.max(baked.width, baked.height) > maxDim)
+        ? I.imgToCanvas(baked, maxDim) : baked;
+      const jpeg = await P.canvasToJpegBytes(out, q);
+      pages.push({ jpeg, widthPx: out.width, heightPx: out.height });
     }
     const blob = await P.buildPdf(pages, { paper, title: name, password });
     await saveDocToLibrary();
@@ -468,7 +506,8 @@ window.DS = window.DS || {};
     } else {
       downloadBlob(blob, filename);
     }
-    toast(share ? 'Shared' : (password ? 'PDF saved (locked)' : 'PDF saved'));
+    const sz = formatBytes(blob.size);
+    toast(share ? `Shared · ${sz}` : (password ? `PDF saved (locked) · ${sz}` : `PDF saved · ${sz}`));
   }
 
   async function exportJpgs({ share = false } = {}) {
@@ -561,13 +600,20 @@ window.DS = window.DS || {};
       $('#library-count').textContent = `${items} scan${items === 1 ? '' : 's'}`;
     });
 
-    $('#btn-camera').addEventListener('click', () => $('#file-input-camera').click());
+    // Live camera if supported; otherwise fall back to the OS camera file picker.
+    $('#btn-camera').addEventListener('click', () => {
+      if (DS.camera && DS.camera.supported()) DS.camera.open({ append: false });
+      else $('#file-input-camera').click();
+    });
     $('#btn-library-pick').addEventListener('click', () => $('#file-input').click());
     $('#file-input').addEventListener('change', (e) => addPagesFromFiles(e.target.files));
     $('#file-input-camera').addEventListener('change', (e) => addPagesFromFiles(e.target.files));
     $('#file-input').multiple = true;
 
-    $('#btn-add-page').addEventListener('click', () => $('#file-input-camera').click());
+    $('#btn-add-page').addEventListener('click', () => {
+      if (DS.camera && DS.camera.supported()) DS.camera.open({ append: true });
+      else $('#file-input-camera').click();
+    });
     $('#btn-done').addEventListener('click', openExport);
 
     $('#act-crop').addEventListener('click', openCrop);
@@ -673,6 +719,7 @@ window.DS = window.DS || {};
   // ---------- boot ----------
   function boot() {
     bind();
+    if (DS.camera && DS.camera.bind) DS.camera.bind();
     const pill = $('#version-pill');
     if (pill) pill.textContent = APP_VERSION;
     setView('home');
@@ -685,6 +732,10 @@ window.DS = window.DS || {};
     setView,
     renderReview,
     persist,
+    addPages,
+    openReview,
+    pageCount,
+    startNewDoc,
     currentView: () => state.view,
   };
 

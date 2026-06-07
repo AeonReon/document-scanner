@@ -10,9 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="Scanner" />
 <title>Private Document Scanner</title>
 <link rel="manifest" href="/manifest.json" />
-<link rel="icon" href="/images/favicon-32.png?v=6" sizes="32x32" />
-<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=6" />
-<link rel="stylesheet" href="/styles.css?v=6" />
+<link rel="icon" href="/images/favicon-32.png?v=7" sizes="32x32" />
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png?v=7" />
+<link rel="stylesheet" href="/styles.css?v=7" />
 </head>
 <body>
 
@@ -29,7 +29,7 @@
     <div class="hero">
       <div class="hero-card">
         <div class="hero-icon" aria-hidden="true">
-          <img src="/images/icon-192.png?v=6" alt="" />
+          <img src="/images/icon-192.png?v=7" alt="" />
         </div>
         <h2>Scan anything.<br>Stays on your phone.</h2>
         <p>Photos turn into clean PDFs. Nothing leaves the device — no accounts, no cloud, no uploads.</p>
@@ -57,6 +57,22 @@
         <p class="small muted">Every scan is saved here, private to this device. Nothing is uploaded.</p>
       </div>
     </div>
+  </section>
+
+  <!-- CAMERA (live capture) -->
+  <section class="view" id="view-camera" data-view="camera" hidden>
+    <div class="cam-stage" id="cam-stage">
+      <video id="cam-video" playsinline muted autoplay></video>
+      <svg id="cam-overlay" aria-hidden="true"><polygon id="cam-quad" /></svg>
+      <div id="cam-flash"></div>
+    </div>
+    <p class="hint" id="cam-hint">Point at a document…</p>
+    <div class="cam-controls">
+      <button class="btn btn-ghost" id="cam-auto" aria-pressed="true">Auto-capture: On</button>
+      <button class="cam-shutter" id="cam-shutter" aria-label="Capture"><span></span></button>
+      <button class="btn btn-primary" id="cam-done">Done</button>
+    </div>
+    <p class="muted small" id="cam-count" style="text-align:center"></p>
   </section>
 
   <!-- REVIEW -->
@@ -203,6 +219,15 @@
       </label>
 
       <label class="field">
+        <span class="label">PDF size</span>
+        <select id="export-quality">
+          <option value="small">Smaller file (good for email)</option>
+          <option value="balanced" selected>Balanced (recommended)</option>
+          <option value="high">High quality (largest)</option>
+        </select>
+      </label>
+
+      <label class="field">
         <span class="label">Password <span class="muted small">(optional)</span></span>
         <input type="password" id="export-password" placeholder="Leave blank for no password" autocomplete="off" />
         <span class="field-hint muted small">Locks the PDF. The recipient needs this to open it.</span>
@@ -240,14 +265,15 @@
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- VERSION PILL -->
-<div class="version-pill" id="version-pill">v6</div>
+<div class="version-pill" id="version-pill">v7</div>
 
-<script src="/js/util.js?v=6"></script>
-<script src="/js/imaging.js?v=6"></script>
-<script src="/js/pdf.js?v=6"></script>
-<script src="/js/db.js?v=6"></script>
-<script src="/js/annotate.js?v=6"></script>
-<script src="/js/app.js?v=6"></script>
+<script src="/js/util.js?v=7"></script>
+<script src="/js/imaging.js?v=7"></script>
+<script src="/js/pdf.js?v=7"></script>
+<script src="/js/db.js?v=7"></script>
+<script src="/js/annotate.js?v=7"></script>
+<script src="/js/camera.js?v=7"></script>
+<script src="/js/app.js?v=7"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
